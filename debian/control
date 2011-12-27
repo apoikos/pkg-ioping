@@ -1,0 +1,15 @@
+Source: ioping
+Section: admin
+Priority: extra
+Maintainer: Apollon Oikonomopoulos <apoikos@gmail.com>
+Build-Depends: debhelper (>= 8)
+Standards-Version: 3.9.2
+Homepage: http://code.google.com/p/ioping
+
+Package: ioping
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Simple disk I/O latency measuring tool
+ ioping monitors disk I/O latency in real time. The main idea behind ioping is
+ to have a utility similar to ping, which will show disk I/O latency in the
+ same way ping shows network latency.

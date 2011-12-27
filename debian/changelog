@@ -1,0 +1,11 @@
+ioping (0.6-1) unstable; urgency=low
+
+  * New upstream release 
+
+ -- Apollon Oikonomopoulos <apoikos@gmail.com>  Tue, 27 Dec 2011 13:31:24 +0200
+
+ioping (0.5-1) unstable; urgency=low
+
+  * Initial release (Closes: #634008)
+
+ -- Apollon Oikonomopoulos <apoikos@gmail.com>  Sat, 16 Jul 2011 08:31:07 +0300
