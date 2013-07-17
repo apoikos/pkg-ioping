@@ -1,0 +1,24 @@
+Subject: do not re-generate the version file (conflicts with gbp)
+Author: Apollon Oikonomopoulos <apoikos@gmail.com>
+Forwarded: no
+Last-Update: 2013-07-17
+--- a/Makefile
++++ b/Makefile
+@@ -28,7 +28,7 @@
+ BINS:=$(BINS:=.exe)
+ endif
+ 
+-all: version $(BINS)
++all: $(BINS)
+ 
+ version: $(DISTFILES)
+ 	test ! -d .git || git describe --tags --dirty=+ | sed 's/^v//;s/-/./g' > $@
+@@ -42,7 +42,7 @@
+ 	mkdir -p $(DESTDIR)$(MAN1DIR)
+ 	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
+ 
+-%.o: %.c version
++%.o: %.c
+ 	$(CC) $(CFLAGS) -DVERSION=\"${VERSION}\" -c -o $@ $<
+ 
+ %.ps: %.1
