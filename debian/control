@@ -2,8 +2,8 @@ Source: ioping
 Section: admin
 Priority: extra
 Maintainer: Apollon Oikonomopoulos <apoikos@gmail.com>
-Build-Depends: debhelper (>= 8)
-Standards-Version: 3.9.2
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.4
 Homepage: http://code.google.com/p/ioping
 
 Package: ioping
