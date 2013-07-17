@@ -1,2 +1,3 @@
 specify_prefix
 do_not_generate_version.patch
+use_dpkg_buildflags.patch

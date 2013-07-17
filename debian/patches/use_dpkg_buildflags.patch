@@ -1,0 +1,24 @@
+Subject: Use dpkg-buildflags during build
+Author: Apollon Oikonomopoulos <apoikos@gmail.com>
+Forwarded: no
+Last-Update: 2013-07-17
+--- a/Makefile
++++ b/Makefile
+@@ -1,5 +1,8 @@
++CPPFLAGS:=$(shell dpkg-buildflags --get CPPFLAGS)
++CFLAGS:=$(shell dpkg-buildflags --get CFLAGS)
+ CFLAGS+=-std=gnu99 -g -Wall -Wextra -pedantic -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
+ LIBS=-lm
++LDFLAGS:=$(shell dpkg-buildflags --get LDFLAGS)
+ PREFIX=/usr
+ BINDIR=$(PREFIX)/bin
+ MAN1DIR=$(PREFIX)/share/man/man1
+@@ -43,7 +46,7 @@
+ 	install -m 644 $(MANS) $(DESTDIR)$(MAN1DIR)
+ 
+ %.o: %.c
+-	$(CC) $(CFLAGS) -DVERSION=\"${VERSION}\" -c -o $@ $<
++	$(CC) $(CFLAGS) $(CPPFLAGS) -DVERSION=\"${VERSION}\" -c -o $@ $<
+ 
+ %.ps: %.1
+ 	man -t ./$< > $@
