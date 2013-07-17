@@ -1,0 +1,14 @@
+Subject: Specify the installation prefix
+Author: Apollon Oikonomopoulos <apoikos@gmail.com>
+Forwarded: no
+Last-Update: 2013-07-17
+--- a/Makefile
++++ b/Makefile
+@@ -1,6 +1,6 @@
+ CFLAGS+=-std=gnu99 -g -Wall -Wextra -pedantic -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
+ LIBS=-lm
+-PREFIX=/usr/local
++PREFIX=/usr
+ BINDIR=$(PREFIX)/bin
+ MAN1DIR=$(PREFIX)/share/man/man1
+ 
