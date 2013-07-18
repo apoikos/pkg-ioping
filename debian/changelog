@@ -1,6 +1,16 @@
 ioping (0.7-1) unstable; urgency=low
 
   * New upstream release 
+  * Convert debian/copyright to machine readable format 1.0
+  * Bump standards version to 3.9.4
+    - no changes needed
+  * Bump dh compat to 9
+  * Introduce 3 additional patches:
+    - use_dpkg_buildflags.patch: use hardening build flags
+    - do_not_generate_version.patch:
+      skip generating a version file from the current git revision, as this
+      conflicts with gbp.
+    - fix_manpage_hyphen.patch: fix a manpage dash-vs-hyphen glitch
 
  -- Apollon Oikonomopoulos <apoikos@gmail.com>  Wed, 17 Jul 2013 17:19:52 +0300
 
