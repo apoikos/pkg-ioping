@@ -7,7 +7,7 @@ Last-Update: 2013-07-17
 @@ -1,5 +1,8 @@
 +CPPFLAGS:=$(shell dpkg-buildflags --get CPPFLAGS)
 +CFLAGS:=$(shell dpkg-buildflags --get CFLAGS)
- CFLAGS+=-std=gnu99 -g -Wall -Wextra -pedantic -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
+ CFLAGS+=-std=gnu99 -g -Wall -Wextra -pedantic
  LIBS=-lm
 +LDFLAGS:=$(shell dpkg-buildflags --get LDFLAGS)
  PREFIX=/usr
