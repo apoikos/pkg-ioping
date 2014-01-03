@@ -1,3 +1,10 @@
+ioping (0.8-1) unstable; urgency=medium
+
+  * New upstream version.
+  * Bump standards to 3.9.5 (no changes needed).
+
+ -- Apollon Oikonomopoulos <apoikos@gmail.com>  Fri, 03 Jan 2014 10:42:15 +0200
+
 ioping (0.7-1) unstable; urgency=low
 
   * New upstream release 
