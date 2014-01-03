@@ -1,7 +1,7 @@
 /*
  *  ioping  -- simple I/0 latency measuring tool
  *
- *  Copyright (C) 2011 Konstantin Khlebnikov <koct9i@gmail.com>
+ *  Copyright (C) 2011-2013 Konstantin Khlebnikov <koct9i@gmail.com>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,9 +18,13 @@
  *
  */
 
+#define _GNU_SOURCE
+#define _FILE_OFFSET_BITS 64
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <inttypes.h>
 #include <getopt.h>
 #include <string.h>
 #include <unistd.h>
@@ -63,6 +67,16 @@
 # define HAVE_ERR_INCLUDE
 #endif
 
+#ifdef __OpenBSD__
+# include <sys/ioctl.h>
+# include <sys/disklabel.h>
+# include <sys/dkio.h>
+# include <sys/param.h>
+# include <sys/mount.h>
+# define HAVE_POSIX_MEMALIGN
+# define HAVE_ERR_INCLUDE
+#endif
+
 #ifdef __APPLE__
 # include <sys/ioctl.h>
 # include <sys/mount.h>
@@ -70,6 +84,10 @@
 # include <sys/uio.h>
 # define HAVE_NOCACHE_IO
 # define HAVE_ERR_INCLUDE
+#endif
+
+#if defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO > 0
+# define HAVE_POSIX_FDATASYNC
 #endif
 
 #ifdef HAVE_ERR_INCLUDE
@@ -100,7 +118,7 @@ void errx(int eval, const char *fmt, ...)
 	exit(eval);
 }
 
-void warn(const char *fmt, ...)
+void warnx(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -154,11 +172,6 @@ int fsync(int fd)
 	return FlushFileBuffers(h) ? 0 : -1;
 }
 
-int fdatasync(int fd)
-{
-	return fsync(fd);
-}
-
 void srandom(unsigned int seed)
 {
 	srand(seed);
@@ -191,6 +204,13 @@ int posix_memalign(void **memptr, size_t alignment, size_t size)
 }
 #endif
 
+#ifndef HAVE_POSIX_FDATASYNC
+int fdatasync(int fd)
+{
+	return fsync(fd);
+}
+#endif
+
 void usage(void)
 {
 	fprintf(stderr,
@@ -220,6 +240,11 @@ void usage(void)
 	       );
 }
 
+#ifndef VERSION
+# warning ioping version undefined
+# define VERSION ""
+#endif
+
 void version(void)
 {
 	fprintf(stderr, "ioping %s\n", VERSION);
@@ -243,21 +268,27 @@ static struct suffix int_suffix[] = {
 };
 
 static struct suffix size_suffix[] = {
-	{ "tb",		1ll<<40 },
-	{ "gb",		1ll<<30 },
-	{ "mb",		1ll<<20 },
-	{ "kb",		1ll<<10 },
-	{ "b",		1 },
+	/* These are first match for printing */
+	{ "PiB",	1ll<<50 },
+	{ "TiB",	1ll<<40 },
+	{ "GiB",	1ll<<30 },
+	{ "MiB",	1ll<<20 },
+	{ "KiB",	1ll<<10 },
+	{ "B",		1 },
 	{ "",		1 },
+	/* Should be decimal, keep binary for compatibility */
 	{ "k",		1ll<<10 },
-	{ "p",		1ll<<12 },
+	{ "kb",		1ll<<10 },
 	{ "m",		1ll<<20 },
+	{ "mb",		1ll<<20 },
 	{ "g",		1ll<<30 },
+	{ "gb",		1ll<<30 },
 	{ "t",		1ll<<40 },
-	{ "p",		1ll<<50 },
+	{ "tb",		1ll<<40 },
 	{ "pb",		1ll<<50 },
-	{ "e",		1ll<<60 },
 	{ "eb",		1ll<<60 },
+	{ "sector",	512 },
+	{ "page",	4096 },
 	{ NULL,		0ll },
 };
 
@@ -311,12 +342,12 @@ long long parse_time(const char *str)
 	return parse_suffix(str, time_suffix);
 }
 
-void print_suffix(long long val, struct suffix *sfx)
+void print_suffix(int64_t val, struct suffix *sfx)
 {
 	while (val < sfx->mul && sfx->mul > 1)
 		sfx++;
 	if (sfx->mul == 1)
-		printf("%lld", val);
+		printf("%" PRId64, val);
 	else
 		printf("%.1f", val * 1.0 / sfx->mul);
 	if (*sfx->txt)
@@ -351,6 +382,7 @@ long long now(void)
 char *path = NULL;
 char *fstype = "";
 char *device = "";
+off_t device_size = 0;
 
 int fd;
 void *buf;
@@ -510,7 +542,8 @@ out:
 	fclose(file);
 }
 
-#elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
+#elif defined(__APPLE__) || defined(__OpenBSD__) \
+	|| defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
 
 void parse_device(dev_t dev)
 {
@@ -557,6 +590,14 @@ off_t get_device_size(int fd, struct stat *st)
 	struct partinfo pinfo;
 	ret = ioctl(fd, DIOCGPART, &pinfo);
 	blksize = pinfo.media_size;
+#elif defined(__OpenBSD__)
+	struct disklabel label;
+	struct partition part;
+
+	ret = ioctl(fd, DIOCGDINFO, &label);
+	part = label.d_partitions[DISKPART(st->st_rdev)];
+
+	blksize = DL_GETPSIZE(&part) * label.d_secsize;
 #else
 # error no get disk size method
 #endif
@@ -698,13 +739,14 @@ static void aio_setup(void)
 
 int create_temp(char *path, char *template)
 {
-	char *temp = malloc(strlen(path) + strlen(template) + 2);
+	int length = strlen(path) + strlen(template) + 2;
+	char *temp = malloc(length);
 	HANDLE h;
 	DWORD attr;
 
 	if (!temp)
 		err(2, NULL);
-	sprintf(temp, "%s\\%s", path, template);
+	snprintf(temp, length, "%s\\%s", path, template);
 	mktemp(temp);
 
 	attr = FILE_ATTRIBUTE_HIDDEN | FILE_FLAG_DELETE_ON_CLOSE;
@@ -747,12 +789,13 @@ void set_signal(void)
 
 int create_temp(char *path, char *template)
 {
-	char *temp = malloc(strlen(path) + strlen(template) + 2);
+	int length = strlen(path) + strlen(template) + 2;
+	char *temp = malloc(length);
 	int fd;
 
 	if (!temp)
 		err(2, NULL);
-	sprintf(temp, "%s/%s", path, template);
+	snprintf(temp, length, "%s/%s", path, template);
 
 	fd = mkstemp(temp);
 	if (fd < 0)
@@ -814,9 +857,15 @@ int main (int argc, char **argv)
 
 	flags = O_RDONLY;
 
-#if !defined(HAVE_POSIX_FADVICE) && !defined(HAVE_NOCACHE_IO) && \
-			defined(HAVE_DIRECT_IO)
+#if !defined(HAVE_POSIX_FADVICE) && !defined(HAVE_NOCACHE_IO)
+# if defined(HAVE_DIRECT_IO)
 	direct |= !cached;
+# else
+	if (!cached)
+		warnx("non-cached I/O not supportted by this platform,"
+				" results will be unreliable.");
+	cached = 1;
+# endif
 #endif
 
 	if (write_test) {
@@ -853,13 +902,9 @@ int main (int argc, char **argv)
 		if (fd < 0)
 			err(2, "failed to open \"%s\"", path);
 
-		st.st_size = get_device_size(fd, &st);
-
+		device_size = get_device_size(fd, &st);
+		st.st_size = device_size;
 		fstype = "device";
-		device = malloc(32);
-		if (!device)
-			err(2, "no mem");
-		snprintf(device, 32, "%.1f Gb", (double)st.st_size/(1ll<<30));
 	} else {
 		errx(2, "unsupported destination: \"%s\"", path);
 	}
@@ -960,8 +1005,10 @@ int main (int argc, char **argv)
 
 		if (!quiet) {
 			print_size(ret_size);
-			printf(" from %s (%s %s): request=%d time=",
-					path, fstype, device, request);
+			printf(" from %s (%s %s", path, fstype, device);
+			if (device_size)
+				print_size(device_size);
+			printf("): request=%d time=", request);
 			print_time(this_time);
 			printf("\n");
 		}
@@ -1031,8 +1078,10 @@ int main (int argc, char **argv)
 				time_min, time_avg,
 				time_max, time_mdev);
 	} else if (!quiet || (!period_time && !period_request)) {
-		printf("\n--- %s (%s %s) ioping statistics ---\n",
-				path, fstype, device);
+		printf("\n--- %s (%s %s", path, fstype, device);
+		if (device_size)
+			print_size(device_size);
+		printf(") ioping statistics ---\n");
 		print_int(request);
 		printf(" requests completed in ");
 		print_time(time_total);
