@@ -1,6 +1,6 @@
 Subject: Specify the installation prefix
 Author: Apollon Oikonomopoulos <apoikos@gmail.com>
-Forwarded: no
+Forwarded: not-needed
 Last-Update: 2013-07-17
 --- a/Makefile
 +++ b/Makefile

@@ -1,6 +1,6 @@
 Subject: do not re-generate the version file (conflicts with gbp)
 Author: Apollon Oikonomopoulos <apoikos@gmail.com>
-Forwarded: no
+Forwarded: not-needed
 Last-Update: 2013-07-17
 --- a/Makefile
 +++ b/Makefile
